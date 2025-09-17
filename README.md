@@ -113,7 +113,7 @@
 ## ⚙️ Configuration
 
 **application.properties:**
->spring.datasource.url=jdbc:postgresql://postgres:5432/datetime_db 
+>spring.datasource.url=jdbc:postgresql://postgres:5432/datetime_db  
 spring.datasource.username=root  
 spring.datasource.password=admin  
 spring.jpa.hibernate.ddl-auto=update  
