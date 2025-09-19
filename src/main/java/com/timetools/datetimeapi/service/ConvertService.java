@@ -21,6 +21,8 @@ public class ConvertService {
     public String convertTimezone(String datetime, String fromTimezone, String toTimezone) {
         try {
             LocalDateTime localDateTime = LocalDateTime.parse(datetime, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            // TODO: Handle DST transitions properly (ambiguous or missing times)
+            // TODO: Handle case when fromTimezone.equals(toTimezone) explicitly
             ZonedDateTime sourceZoned = localDateTime.atZone(ZoneId.of(fromTimezone));
             ZonedDateTime targetZoned = sourceZoned.withZoneSameInstant(ZoneId.of(toTimezone));
             String output = targetZoned.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);

@@ -1,9 +1,13 @@
 package com.timetools.datetimeapi.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class ConversionRequest {
 
     @Schema(example = "2025-09-17T12:00:00", description = "The datetime to convert in ISO format")
