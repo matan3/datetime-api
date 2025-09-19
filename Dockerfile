@@ -1,5 +1,5 @@
 # === Build stage ===
-FROM eclipse-temurin:17-jdk-jammy as build
+FROM eclipse-temurin:17-jdk-jammy AS build
 
 WORKDIR /app
 
@@ -7,21 +7,24 @@ WORKDIR /app
 COPY gradlew gradlew.bat build.gradle settings.gradle /app/
 COPY gradle /app/gradle
 
+# Ensure gradlew is executable
+RUN chmod +x ./gradlew
+
+# Download dependencies (cache layer)
+RUN ./gradlew --no-daemon dependencies || true
+
 # Copy source code
 COPY src /app/src
 
-# Make Gradle wrapper executable
-RUN chmod +x ./gradlew
-
 # Build the project (skip tests for speed)
-RUN ./gradlew clean build -x test
+RUN ./gradlew --no-daemon clean build -x test
 
 # === Runtime stage ===
-FROM eclipse-temurin:17-jdk-jammy
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
-# Copy only the JAR from build stage
+# Copy only the fat JAR from build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
 EXPOSE 8080
