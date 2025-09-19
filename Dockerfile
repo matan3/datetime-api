@@ -3,18 +3,17 @@ FROM eclipse-temurin:17-jdk-jammy AS build
 
 WORKDIR /app
 
-# Copy Gradle wrapper and build files first (for caching)
-COPY gradlew gradlew.bat build.gradle settings.gradle /app/
-COPY gradle /app/gradle
+# Copy only Gradle build files & wrapper first (for caching)
+COPY build.gradle settings.gradle gradlew gradlew.bat gradle/ /app/
 
 # Ensure gradlew is executable
 RUN chmod +x ./gradlew
 
-# Download dependencies (cache layer)
+# Download dependencies (cache this layer)
 RUN ./gradlew --no-daemon dependencies || true
 
-# Copy source code
-COPY src /app/src
+# Copy full source code
+COPY . /app
 
 # Build the project (skip tests for speed)
 RUN ./gradlew --no-daemon clean build -x test
