@@ -3,10 +3,12 @@ FROM eclipse-temurin:17-jdk-jammy AS build
 
 WORKDIR /app
 
-# Copy only Gradle build files & wrapper first (for caching)
-COPY build.gradle settings.gradle gradlew gradlew.bat gradle/ /app/
+# Copy only Gradle wrapper and build files first (for caching)
+COPY gradlew gradlew.bat /app/
+COPY gradle/wrapper /app/gradle/wrapper
+COPY build.gradle settings.gradle /app/
 
-# Ensure gradlew is executable
+# Make Gradle wrapper executable
 RUN chmod +x ./gradlew
 
 # Download dependencies (cache this layer)
@@ -23,9 +25,10 @@ FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
-# Copy only the fat JAR from build stage
+# Copy only the fat JAR from the build stage
 COPY --from=build /app/build/libs/*.jar app.jar
 
+# Expose the port your app runs on
 EXPOSE 8080
 
 # Run Spring Boot app
