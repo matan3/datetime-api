@@ -3,6 +3,8 @@ name: CI/CD - TimeTools API
 on:
   push:
     branches: [ master ]
+    tags:
+      - 'v*.*.*'   # Semantic version tags trigger release
   pull_request:
     branches: [ master ]
 
@@ -43,17 +45,52 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 6️⃣ Build Docker image
+      # 6️⃣ Determine Docker tags
+      - name: Determine Docker tags
+        id: vars
+        run: |
+          echo "COMMIT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION_TAG=${GITHUB_REF#refs/tags/}
+            echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+            echo "IS_RELEASE=true" >> $GITHUB_ENV
+          else
+            VERSION_TAG=dev-${GITHUB_RUN_NUMBER}
+            echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
+          fi
+
+      # 7️⃣ Build Docker image
       - name: Build Docker image
         run: |
           IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/timetools-api
-          COMMIT_SHA=${GITHUB_SHA::8}   # first 8 chars of commit SHA
-          docker build -t $IMAGE_NAME:latest -t $IMAGE_NAME:$COMMIT_SHA .
+          if [[ "$IS_RELEASE" == "true" ]]; then
+            docker build -t $IMAGE_NAME:latest \
+                         -t $IMAGE_NAME:$COMMIT_SHA \
+                         -t $IMAGE_NAME:$VERSION_TAG .
+          else
+            docker build -t $IMAGE_NAME:$COMMIT_SHA \
+                         -t $IMAGE_NAME:$VERSION_TAG .
+          fi
 
-      # 7️⃣ Push Docker images
+      # 8️⃣ Push Docker images
       - name: Push Docker images to Docker Hub
         run: |
           IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/timetools-api
-          COMMIT_SHA=${GITHUB_SHA::8}
-          docker push $IMAGE_NAME:latest
+          if [[ "$IS_RELEASE" == "true" ]]; then
+            docker push $IMAGE_NAME:latest
+          fi
           docker push $IMAGE_NAME:$COMMIT_SHA
+          docker push $IMAGE_NAME:$VERSION_TAG
+
+      # 9️⃣ Deploy to Render only for tagged releases
+      - name: Deploy to Render
+        if: env.IS_RELEASE == 'true'
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
+          method: POST
+          headers: |
+            Authorization: Bearer ${{ secrets.RENDER_API_KEY }}
+            Accept: application/json
+          body: '{"clearCache": true}'
