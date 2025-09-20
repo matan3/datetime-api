@@ -11,7 +11,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 
@@ -21,8 +26,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Testcontainers
 @ActiveProfiles("test")
 class ConvertIntegrationTest {
+
+    @Container
+    private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
+            .withDatabaseName("datetime_test_db")
+            .withUsername("root")
+            .withPassword("admin");
+
+    @DynamicPropertySource
+    static void overrideProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -43,7 +63,7 @@ class ConvertIntegrationTest {
         ConversionRequest request = new ConversionRequest();
         request.setDatetime("2025-09-19T12:00:00");
         request.setFromTimezone("UTC");
-        request.setToTimezone("Europe/Tel_Aviv");
+        request.setToTimezone("Europe/London");
 
         mockMvc.perform(post("/api/convert")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -56,8 +76,8 @@ class ConvertIntegrationTest {
         ConversionLog log = logs.get(0);
         assertThat(log.getInputDatetime()).isEqualTo("2025-09-19T12:00:00");
         assertThat(log.getFromTimezone()).isEqualTo("UTC");
-        assertThat(log.getToTimezone()).isEqualTo("Europe/Tel_Aviv");
-        assertThat(log.getOutputDatetime()).contains("+03:00");
+        assertThat(log.getToTimezone()).isEqualTo("Europe/London");
+        assertThat(log.getOutputDatetime()).contains("+01:00");
     }
 
     @Test
@@ -65,7 +85,7 @@ class ConvertIntegrationTest {
         ConversionRequest request = new ConversionRequest();
         request.setDatetime("invalid-date");
         request.setFromTimezone("UTC");
-        request.setToTimezone("Europe/Tel_Aviv");
+        request.setToTimezone("Europe/London");
 
         mockMvc.perform(post("/api/convert")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,7 +100,7 @@ class ConvertIntegrationTest {
         ConversionRequest request = new ConversionRequest();
         request.setDatetime("2025-09-19T12:00:00");
         request.setFromTimezone("INVALID_ZONE");
-        request.setToTimezone("Europe/Tel_Aviv");
+        request.setToTimezone("Europe/London");
 
         mockMvc.perform(post("/api/convert")
                         .contentType(MediaType.APPLICATION_JSON)

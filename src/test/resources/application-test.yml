@@ -1,8 +1,5 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/datetime_test_db
-    username: root
-    password: admin
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
