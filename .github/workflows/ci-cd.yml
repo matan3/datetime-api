@@ -92,4 +92,4 @@ jobs:
           method: POST
           bearerToken: ${{ secrets.RENDER_API_KEY }}
           contentType: application/json
-          data: '{"clearCache": true}'
+          data: '{ "clearCache": true }'
