@@ -90,7 +90,6 @@ jobs:
         with:
           url: https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
           method: POST
-          headers: |
-            Authorization: Bearer ${{ secrets.RENDER_API_KEY }}
-            Accept: application/json
-          body: '{"clearCache": true}'
+          bearerToken: ${{ secrets.RENDER_API_KEY }}
+          contentType: application/json
+          data: '{"clearCache": true}'
