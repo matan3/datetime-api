@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TimeTools - Convert Datetimes</title>
+
+    <!-- Tailwind CDN (fast for prototype; later you can build CSS) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- HTMX (optional later) -->
+    <script src="https://unpkg.com/htmx.org@1.9.3"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<!-- Navbar -->
+<nav class="bg-white shadow p-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="text-2xl font-bold">⏰ TimeTools</div>
+        <div class="text-sm text-gray-500">Datetime conversion API</div>
+    </div>
+    <div class="space-x-4">
+        <a class="text-blue-600 hover:underline" href="/swagger-ui/index.html#/">Docs</a>
+        <a class="text-blue-600 hover:underline" href="/swagger-ui.html">Swagger</a>
+        <a class="text-blue-600 hover:underline" href="/actuator/health">Health</a>
+    </div>
+</nav>
+
+<!-- Main -->
+<main class="max-w-3xl mx-auto p-6">
+    <section class="bg-white p-6 rounded-2xl shadow mt-8">
+        <h1 class="text-3xl font-semibold mb-2">Convert datetimes between timezones</h1>
+        <p class="text-gray-600 mb-6">Try a conversion right now. The UI calls your API at <code>/api/convert</code>.</p>
+
+        <label class="block text-sm font-medium mb-1">Datetime (ISO)</label>
+        <input id="datetime" type="text" placeholder="2025-09-17T12:00:00"
+               class="w-full border rounded-lg px-3 py-2 mb-4" value="2025-09-17T12:00:00" />
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">From timezone</label>
+                <input id="fromTz" type="text" value="UTC" class="w-full border rounded-lg px-3 py-2" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">To timezone</label>
+                <input id="toTz" type="text" value="Asia/Jerusalem" class="w-full border rounded-lg px-3 py-2" />
+            </div>
+        </div>
+
+        <div class="flex gap-3 items-center">
+            <button id="convertBtn"
+                    class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Convert</button>
+
+            <button id="historyBtn"
+                    class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200">Load History</button>
+        </div>
+
+        <div id="result" class="mt-6 p-4 rounded-lg bg-gray-50 border text-sm font-mono"></div>
+
+        <div id="history" class="mt-6 space-y-3"></div>
+    </section>
+
+    <section class="mt-6 text-sm text-gray-600">
+        <p>Note: This demo uses the same origin as the API. If you host the UI on a different domain you will need to enable CORS on the backend.</p>
+    </section>
+</main>
+
+<!-- Minimal JS to call API -->
+<script>
+    const $ = id => document.getElementById(id);
+
+    async function convert() {
+      const datetime = $('datetime').value.trim();
+      const fromTimezone = $('fromTz').value.trim();
+      const toTimezone = $('toTz').value.trim();
+
+      $('result').textContent = 'Converting...';
+
+      try {
+        const resp = await fetch('/api/convert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ datetime, fromTimezone, toTimezone })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ message: 'Unknown error' }));
+          $('result').textContent = `Error: ${err.message || resp.statusText}`;
+          return;
+        }
+
+        const data = await resp.text(); // your API returns a string; or use .json() if it's JSON
+        $('result').textContent = `Result: ${data}`;
+      } catch (e) {
+        $('result').textContent = `Request failed: ${e.message}`;
+      }
+    }
+
+    async function loadHistory() {
+      $('history').innerHTML = 'Loading...';
+      try {
+        const resp = await fetch('/api/conversions');
+        if (!resp.ok) {
+          $('history').textContent = 'Failed to load history';
+          return;
+        }
+        const list = await resp.json();
+        if (!Array.isArray(list) || list.length === 0) {
+          $('history').innerHTML = '<div class="text-gray-500">No conversions yet</div>';
+          return;
+        }
+        $('history').innerHTML = list.map(l => `
+          <div class="p-3 bg-white rounded-lg border">
+            <div class="text-sm font-mono">${l.inputDatetime} → ${l.outputDatetime}</div>
+            <div class="text-xs text-gray-500">${l.fromTimezone} → ${l.toTimezone}</div>
+            <div class="text-xs text-gray-400">${l.createdAt || ''}</div>
+          </div>`).join('');
+      } catch (e) {
+        $('history').textContent = `Error loading history: ${e.message}`;
+      }
+    }
+
+    $('convertBtn').addEventListener('click', convert);
+    $('historyBtn').addEventListener('click', loadHistory);
+</script>
+</body>
+</html>
