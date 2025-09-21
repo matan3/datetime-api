@@ -34,7 +34,7 @@
 
         <!-- Datetime picker -->
         <label class="block text-sm font-medium mb-1">Datetime</label>
-        <input id="datetime" type="datetime-local"
+        <input id="datetime" type="datetime-local" step="1"
                class="w-full border rounded-lg px-3 py-2 mb-4" />
 
         <!-- Searchable Timezone Dropdowns -->
@@ -83,8 +83,13 @@
 
         function populateTimezones() {
           for (const tz of timezones) {
-            fromTzSelect.append(new Option(tz, tz));
-            toTzSelect.append(new Option(tz, tz));
+            const fromOption = new Option(tz, tz);
+            if (tz === "Europe/London") fromOption.selected = true; // default: London
+            fromTzSelect.append(fromOption);
+
+            const toOption = new Option(tz, tz);
+            if (tz === "Asia/Tokyo") toOption.selected = true; // default: Tokyo
+            toTzSelect.append(toOption);
           }
 
           // initialize Tom Select (searchable dropdowns, show all on click)
@@ -100,29 +105,25 @@
             openOnFocus: true,
             maxOptions: null
           });
-
-          // set defaults
-          fromTzSelect.tomselect.setValue("UTC");
-          toTzSelect.tomselect.setValue("Asia/Jerusalem");
         }
 
         // --- Set current datetime automatically ---
         function setDefaultDatetime() {
           const now = new Date();
-          const local = now.toISOString().slice(0,16); // "YYYY-MM-DDTHH:mm"
+          // YYYY-MM-DDTHH:mm:ss
+          const local = now.toISOString().slice(0,19);
           datetimeInput.value = local;
         }
 
         async function convert() {
-          // Append ":00" to match ISO with seconds if needed by API
-          const datetime = datetimeInput.value ? datetimeInput.value + ":00" : "";
-          const fromTimezone = fromTzSelect.value;
-          const toTimezone = toTzSelect.value;
-
           if (!datetimeInput.value) {
             resultDiv.textContent = "Please select a datetime.";
             return;
           }
+
+          const datetime = datetimeInput.value; // already YYYY-MM-DDTHH:mm:ss
+          const fromTimezone = fromTzSelect.value;
+          const toTimezone = toTzSelect.value;
 
           resultDiv.textContent = 'Converting...';
           convertBtn.disabled = true;
@@ -176,7 +177,7 @@
         convertBtn.addEventListener('click', convert);
         historyBtn.addEventListener('click', loadHistory);
 
-        // init
+        // --- Initialize ---
         populateTimezones();
         setDefaultDatetime();
     });
