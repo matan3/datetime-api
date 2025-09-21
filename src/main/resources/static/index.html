@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>TimeTools - Convert Datetimes</title>
 
-    <!-- Tailwind CDN (fast for prototype; later you can build CSS) -->
+    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- HTMX (optional later) -->
-    <script src="https://unpkg.com/htmx.org@1.9.3"></script>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
@@ -30,7 +27,7 @@
 <main class="max-w-3xl mx-auto p-6">
     <section class="bg-white p-6 rounded-2xl shadow mt-8">
         <h1 class="text-3xl font-semibold mb-2">Convert datetimes between timezones</h1>
-        <p class="text-gray-600 mb-6">Try a conversion right now. The UI calls your API at <code>/api/convert</code>.</p>
+        <p class="text-gray-600 mb-6">Pick a datetime and select timezones.</p>
 
         <label class="block text-sm font-medium mb-1">Datetime (ISO)</label>
         <input id="datetime" type="text" placeholder="2025-09-17T12:00:00"
@@ -39,11 +36,11 @@
         <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium mb-1">From timezone</label>
-                <input id="fromTz" type="text" value="UTC" class="w-full border rounded-lg px-3 py-2" />
+                <select id="fromTz" class="w-full border rounded-lg px-3 py-2"></select>
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">To timezone</label>
-                <input id="toTz" type="text" value="Asia/Jerusalem" class="w-full border rounded-lg px-3 py-2" />
+                <select id="toTz" class="w-full border rounded-lg px-3 py-2"></select>
             </div>
         </div>
 
@@ -56,23 +53,41 @@
         </div>
 
         <div id="result" class="mt-6 p-4 rounded-lg bg-gray-50 border text-sm font-mono"></div>
-
         <div id="history" class="mt-6 space-y-3"></div>
-    </section>
-
-    <section class="mt-6 text-sm text-gray-600">
-        <p>Note: This demo uses the same origin as the API. If you host the UI on a different domain you will need to enable CORS on the backend.</p>
     </section>
 </main>
 
-<!-- Minimal JS to call API -->
+<!-- JS -->
 <script>
     const $ = id => document.getElementById(id);
 
+    // --- TIMEZONE LIST (IANA) ---
+    const timezones = Intl.supportedValuesOf
+      ? Intl.supportedValuesOf("timeZone") // modern browsers
+      : [ "UTC", "Europe/London", "Europe/Paris", "Asia/Jerusalem", "America/New_York" ]; // fallback
+
+    function populateTimezones() {
+      for (const tz of timezones) {
+        const opt1 = document.createElement("option");
+        opt1.value = tz;
+        opt1.textContent = tz;
+        $('fromTz').appendChild(opt1);
+
+        const opt2 = document.createElement("option");
+        opt2.value = tz;
+        opt2.textContent = tz;
+        $('toTz').appendChild(opt2);
+      }
+
+      // default selections
+      $('fromTz').value = "UTC";
+      $('toTz').value = "Asia/Jerusalem";
+    }
+
     async function convert() {
       const datetime = $('datetime').value.trim();
-      const fromTimezone = $('fromTz').value.trim();
-      const toTimezone = $('toTz').value.trim();
+      const fromTimezone = $('fromTz').value;
+      const toTimezone = $('toTz').value;
 
       $('result').textContent = 'Converting...';
 
@@ -89,7 +104,7 @@
           return;
         }
 
-        const data = await resp.text(); // your API returns a string; or use .json() if it's JSON
+        const data = await resp.text();
         $('result').textContent = `Result: ${data}`;
       } catch (e) {
         $('result').textContent = `Request failed: ${e.message}`;
@@ -122,6 +137,9 @@
 
     $('convertBtn').addEventListener('click', convert);
     $('historyBtn').addEventListener('click', loadHistory);
+
+    // initialize dropdowns on load
+    populateTimezones();
 </script>
 </body>
 </html>
