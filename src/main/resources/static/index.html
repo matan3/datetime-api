@@ -34,16 +34,20 @@
             Datetime
             <input type="checkbox" id="showSeconds" class="ml-2"> Show seconds
         </label>
-        <input id="datetime" type="datetime-local" step="60"
+        <input id="datetime" type="datetime-local" step="60" placeholder="Pick date & time"
                class="w-full border rounded-lg px-3 py-2 mb-4" />
 
         <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
-                <label class="block text-sm font-medium mb-1">From timezone</label>
+                <label class="block text-sm font-medium mb-1">
+                    From timezone <span class="text-gray-400 text-xs">(Continent/City format)</span>
+                </label>
                 <select id="fromTz" class="w-full"></select>
             </div>
             <div>
-                <label class="block text-sm font-medium mb-1">To timezone</label>
+                <label class="block text-sm font-medium mb-1">
+                    To timezone <span class="text-gray-400 text-xs">(Continent/City format)</span>
+                </label>
                 <select id="toTz" class="w-full"></select>
             </div>
         </div>
@@ -57,7 +61,7 @@
                     class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 relative">Copy Result</button>
         </div>
 
-        <div id="result" class="mt-4 p-4 rounded-lg bg-gray-50 border text-sm font-mono relative"></div>
+        <div id="result" class="mt-4 p-4 rounded-lg bg-gray-50 border text-sm font-mono relative transition-all"></div>
         <div id="history" class="mt-6 space-y-3"></div>
     </section>
 </main>
@@ -65,125 +69,126 @@
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js" defer></script>
 <script defer>
     document.addEventListener("DOMContentLoaded", () => {
-      const $ = id => document.getElementById(id);
+        const $ = id => document.getElementById(id);
 
-      const datetimeInput = $('datetime');
-      const fromTzSelect = $('fromTz');
-      const toTzSelect = $('toTz');
-      const showSecondsToggle = $('showSeconds');
-      const resultDiv = $('result');
-      const historyDiv = $('history');
-      const convertBtn = $('convertBtn');
-      const historyBtn = $('historyBtn');
-      const copyBtn = $('copyBtn');
+        const datetimeInput = $('datetime');
+        const fromTzSelect = $('fromTz');
+        const toTzSelect = $('toTz');
+        const showSecondsToggle = $('showSeconds');
+        const resultDiv = $('result');
+        const historyDiv = $('history');
+        const convertBtn = $('convertBtn');
+        const historyBtn = $('historyBtn');
+        const copyBtn = $('copyBtn');
 
-      const timezones = Intl.supportedValuesOf
-        ? Intl.supportedValuesOf("timeZone")
-        : ["UTC", "Europe/London", "Europe/Paris", "Asia/Jerusalem", "America/New_York"];
+        const timezones = Intl.supportedValuesOf
+            ? Intl.supportedValuesOf("timeZone")
+            : ["UTC", "Europe/London", "Europe/Paris", "Asia/Tokyo", "America/New_York"];
 
-      function populateTimezones() {
-        for (const tz of timezones) {
-          const fromOption = new Option(tz, tz);
-          if (tz === "Europe/London") fromOption.selected = true;
-          fromTzSelect.append(fromOption);
+        function populateTimezones() {
+            for (const tz of timezones) {
+                const fromOption = new Option(tz, tz);
+                if (tz === "Europe/London") fromOption.selected = true;
+                fromTzSelect.append(fromOption);
 
-          const toOption = new Option(tz, tz);
-          if (tz === "Asia/Tokyo") toOption.selected = true;
-          toTzSelect.append(toOption);
+                const toOption = new Option(tz, tz);
+                if (tz === "Asia/Tokyo") toOption.selected = true;
+                toTzSelect.append(toOption);
+            }
+
+            new TomSelect("#fromTz", { create: false, sortField:{field:"text",direction:"asc"}, openOnFocus:true, maxOptions:null });
+            new TomSelect("#toTz", { create: false, sortField:{field:"text",direction:"asc"}, openOnFocus:true, maxOptions:null });
         }
 
-        new TomSelect("#fromTz", { create: false, sortField:{field:"text",direction:"asc"}, openOnFocus:true, maxOptions:null });
-        new TomSelect("#toTz", { create: false, sortField:{field:"text",direction:"asc"}, openOnFocus:true, maxOptions:null });
-      }
-
-      function setDefaultDatetime() {
-        const now = new Date();
-        datetimeInput.value = now.toISOString().slice(0,16);
-      }
-
-      showSecondsToggle.addEventListener('change', () => {
-        datetimeInput.step = showSecondsToggle.checked ? "1" : "60";
-        const now = new Date();
-        datetimeInput.value = showSecondsToggle.checked ? now.toISOString().slice(0,19) : now.toISOString().slice(0,16);
-      });
-
-      async function convert() {
-        if (!datetimeInput.value) {
-          resultDiv.textContent = "Please select a datetime.";
-          return;
+        function setDefaultDatetime() {
+            const now = new Date();
+            datetimeInput.value = now.toISOString().slice(0,16);
         }
 
-        const datetime = datetimeInput.value;
-        const fromTimezone = fromTzSelect.value;
-        const toTimezone = toTzSelect.value;
-
-        resultDiv.textContent = 'Converting...';
-        convertBtn.disabled = true;
-
-        try {
-          const resp = await fetch('/api/convert', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ datetime, fromTimezone, toTimezone })
-          });
-
-          if (!resp.ok) {
-            const err = await resp.json().catch(() => ({ message: 'Unknown error' }));
-            resultDiv.textContent = `Error: ${err.message || resp.statusText}`;
-            return;
-          }
-
-          const data = await resp.text();
-          // Show only the converted time (toTimezone)
-          resultDiv.textContent = data;
-
-        } catch (e) {
-          resultDiv.textContent = `Request failed: ${e.message}`;
-        } finally {
-          convertBtn.disabled = false;
-        }
-      }
-
-      copyBtn.addEventListener('click', () => {
-        if (!resultDiv.textContent) return;
-        navigator.clipboard.writeText(resultDiv.textContent).then(() => {
-          const tooltip = document.createElement('span');
-          tooltip.textContent = 'Copied!';
-          tooltip.className = 'absolute top-0 right-0 bg-black text-white text-xs px-2 py-1 rounded opacity-90';
-          copyBtn.appendChild(tooltip);
-          setTimeout(() => copyBtn.removeChild(tooltip), 1000);
+        showSecondsToggle.addEventListener('change', () => {
+            datetimeInput.step = showSecondsToggle.checked ? "1" : "60";
+            const now = new Date();
+            datetimeInput.value = showSecondsToggle.checked ? now.toISOString().slice(0,19) : now.toISOString().slice(0,16);
         });
-      });
 
-      async function loadHistory() {
-        historyDiv.innerHTML = 'Loading...';
-        try {
-          const resp = await fetch('/api/conversions');
-          if (!resp.ok) {
-            historyDiv.textContent = 'Failed to load history';
-            return;
-          }
-          const list = await resp.json();
-          if (!Array.isArray(list) || list.length === 0) {
-            historyDiv.innerHTML = '<div class="text-gray-500">No conversions yet</div>';
-            return;
-          }
-          historyDiv.innerHTML = list.slice(-5).map(l => `
-            <div class="p-3 bg-white rounded-lg border">
-              <div class="text-sm font-mono">${l.inputDatetime} → ${l.outputDatetime}</div>
-              <div class="text-xs text-gray-500">${l.fromTimezone} → ${l.toTimezone}</div>
-              <div class="text-xs text-gray-400">${l.createdAt || ''}</div>
-            </div>`).join('');
-        } catch (e) {
-          historyDiv.textContent = `Error loading history: ${e.message}`;
+        async function convert() {
+            if (!datetimeInput.value) {
+                resultDiv.textContent = "Please select a datetime.";
+                return;
+            }
+
+            const datetime = datetimeInput.value;
+            const fromTimezone = fromTzSelect.value;
+            const toTimezone = toTzSelect.value;
+
+            resultDiv.textContent = 'Converting...';
+            convertBtn.disabled = true;
+
+            try {
+                const resp = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ datetime, fromTimezone, toTimezone })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({ message: 'Unknown error' }));
+                    resultDiv.textContent = `Error: ${err.message || resp.statusText}`;
+                    return;
+                }
+
+                const data = await resp.text();
+                // Show only converted time
+                resultDiv.textContent = data;
+
+            } catch (e) {
+                resultDiv.textContent = `Request failed: ${e.message}`;
+            } finally {
+                convertBtn.disabled = false;
+            }
         }
-      }
 
-      convertBtn.addEventListener('click', convert);
-      historyBtn.addEventListener('click', loadHistory);
+        copyBtn.addEventListener('click', () => {
+            if (!resultDiv.textContent) return;
+            navigator.clipboard.writeText(resultDiv.textContent).then(() => {
+                // show toast feedback
+                const toast = document.createElement('div');
+                toast.textContent = 'Copied!';
+                toast.className = 'absolute top-0 right-0 bg-black text-white text-xs px-2 py-1 rounded opacity-90';
+                copyBtn.appendChild(toast);
+                setTimeout(() => copyBtn.removeChild(toast), 1000);
+            });
+        });
 
-      populateTimezones();
-      setDefaultDatetime();
+        async function loadHistory() {
+            historyDiv.innerHTML = 'Loading...';
+            try {
+                const resp = await fetch('/api/conversions');
+                if (!resp.ok) {
+                    historyDiv.textContent = 'Failed to load history';
+                    return;
+                }
+                const list = await resp.json();
+                if (!Array.isArray(list) || list.length === 0) {
+                    historyDiv.innerHTML = '<div class="text-gray-500">No conversions yet</div>';
+                    return;
+                }
+                historyDiv.innerHTML = list.slice(-5).map(l => `
+                    <div class="p-3 bg-white rounded-lg border">
+                        <div class="text-sm font-mono">${l.inputDatetime} → ${l.outputDatetime}</div>
+                        <div class="text-xs text-gray-500">${l.fromTimezone} → ${l.toTimezone}</div>
+                        <div class="text-xs text-gray-400">${l.createdAt || ''}</div>
+                    </div>`).join('');
+            } catch (e) {
+                historyDiv.textContent = `Error loading history: ${e.message}`;
+            }
+        }
+
+        convertBtn.addEventListener('click', convert);
+        historyBtn.addEventListener('click', loadHistory);
+
+        populateTimezones();
+        setDefaultDatetime();
     });
 </script>
 </body>
