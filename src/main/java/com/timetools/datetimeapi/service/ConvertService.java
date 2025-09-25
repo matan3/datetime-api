@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 @Service
@@ -21,13 +22,40 @@ public class ConvertService {
     }
 
     public Map<String, String> convertTimezone(String datetime, String fromTimezone, String toTimezone) {
+        final String output;
         try {
-            LocalDateTime localDateTime = LocalDateTime.parse(datetime, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            // Validate datetime format
+            if (datetime == null || datetime.isBlank()) {
+                throw new IllegalArgumentException("Datetime cannot be empty");
+            }
+            LocalDateTime localDateTime;
+            try {
+                localDateTime = LocalDateTime.parse(datetime, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Datetime must be in ISO_LOCAL_DATE_TIME format (yyyy-MM-ddTHH:mm:ss)");
+            }
+
+            // Validate timezones
+            if (fromTimezone == null || toTimezone == null || fromTimezone.isBlank() || toTimezone.isBlank()) {
+                throw new IllegalArgumentException("Timezones cannot be empty");
+            }
+            if (!ZoneId.getAvailableZoneIds().contains(fromTimezone)) {
+                throw new IllegalArgumentException("Invalid fromTimezone: " + fromTimezone);
+            }
+            if (!ZoneId.getAvailableZoneIds().contains(toTimezone)) {
+                throw new IllegalArgumentException("Invalid toTimezone: " + toTimezone);
+            }
+
+            // If same timezone, return original datetime with offset
+            if (fromTimezone.equals(toTimezone)) {
+                ZonedDateTime sameZone = localDateTime.atZone(ZoneId.of(fromTimezone));
+                output = sameZone.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            } else {
+                ZonedDateTime sourceZoned = localDateTime.atZone(ZoneId.of(fromTimezone));
+                ZonedDateTime targetZoned = sourceZoned.withZoneSameInstant(ZoneId.of(toTimezone));
+                output = targetZoned.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            }
             // TODO: Handle DST transitions properly (ambiguous or missing times)
-            // TODO: Handle case when fromTimezone.equals(toTimezone) explicitly
-            ZonedDateTime sourceZoned = localDateTime.atZone(ZoneId.of(fromTimezone));
-            ZonedDateTime targetZoned = sourceZoned.withZoneSameInstant(ZoneId.of(toTimezone));
-            String output = targetZoned.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
             // Save to database
             ConversionLog log = new ConversionLog();
@@ -35,14 +63,16 @@ public class ConvertService {
             log.setFromTimezone(fromTimezone);
             log.setToTimezone(toTimezone);
             log.setOutputDatetime(output);
-
             repository.save(log);
 
             // Return JSON
             return Map.of(CONVERTED_DATE_TIME, output);
 
+        } catch (IllegalArgumentException e) {
+            throw e; // pass to controller to handle
         } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid input: " + e.getMessage());
+            throw new IllegalArgumentException("Unexpected error: " + e.getMessage());
         }
     }
+
 }
