@@ -7,18 +7,20 @@ import org.springframework.stereotype.Service;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 @Service
 public class ConvertService {
 
     private final ConversionLogRepository repository;
+    private static final String CONVERTED_DATE_TIME = "convertedDatetime";
 
     @Autowired
     public ConvertService(ConversionLogRepository repository) {
         this.repository = repository;
     }
 
-    public String convertTimezone(String datetime, String fromTimezone, String toTimezone) {
+    public Map<String, String> convertTimezone(String datetime, String fromTimezone, String toTimezone) {
         try {
             LocalDateTime localDateTime = LocalDateTime.parse(datetime, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             // TODO: Handle DST transitions properly (ambiguous or missing times)
@@ -36,7 +38,8 @@ public class ConvertService {
 
             repository.save(log);
 
-            return output;
+            // Return JSON
+            return Map.of(CONVERTED_DATE_TIME, output);
 
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid input: " + e.getMessage());

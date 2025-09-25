@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -43,7 +44,8 @@ class ConvertControllerTest {
         request.setToTimezone("Europe/Tel_Aviv");
 
         Mockito.when(convertService.convertTimezone(any(), any(), any()))
-                .thenReturn("2025-09-19T15:00:00+03:00");
+                .thenReturn(Map.of("convertedDatetime", "2025-09-19T15:00:00+03:00"));
+
 
         mockMvc.perform(post("/api/convert")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -26,7 +27,7 @@ public class ConvertController {
     }
 
     @PostMapping("/convert")
-    public String convert(@RequestBody ConversionRequest request) {
+    public Map<String, String> convert(@RequestBody ConversionRequest request) {
         return convertService.convertTimezone(
                 request.getDatetime(),
                 request.getFromTimezone(),

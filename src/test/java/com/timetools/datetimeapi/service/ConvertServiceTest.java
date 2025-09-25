@@ -5,6 +5,7 @@ import com.timetools.datetimeapi.repository.ConversionLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -28,7 +29,8 @@ class ConvertServiceTest {
         String toTz = "Asia/Jerusalem";
 
         // when
-        String result = convertService.convertTimezone(datetime, fromTz, toTz);
+        Map<String, String> resultMap = convertService.convertTimezone(datetime, fromTz, toTz);
+        String result = resultMap.get("convertedDatetime");
 
         // then
         assertNotNull(result);
