@@ -51,7 +51,7 @@ class ConvertControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("2025-09-19T15:00:00+03:00"));
+                .andExpect(jsonPath("$.convertedDatetime").value("2025-09-19T15:00:00+03:00"));
     }
 
     @Test
